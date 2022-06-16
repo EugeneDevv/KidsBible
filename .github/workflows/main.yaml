@@ -1,10 +1,39 @@
-name: kids_bible
+name: Kids Bible CI/CD Workflow
 
-on: [pull_request, push]
-
+on: [push]
 jobs:
-  build:
-    uses: VeryGoodOpenSource/very_good_workflows/.github/workflows/flutter_package.yml@v1
-    with:
-      flutter_channel: stable
-      flutter_version: 3.0.0
+  publish-demo-binary-to-app-store:
+    name: Publish Kids Bible binary to TestFlight
+    timeout-minutes: 60
+    runs-on: macos-latest
+    if: github.event_name == 'push' && github.ref == 'refs/heads/develop'
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-java@v1
+        with:
+          java-version: "12"
+
+      - uses: actions/setup-python@v1
+        with:
+          python-version: "3.8"
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: 2.6
+
+      - uses: subosito/flutter-action@v1
+        with:
+          channel: "stable"
+          flutter-version: "3.0.1"
+
+      - name: Install flutter dependencies
+        run: flutter pub get
+
+      - name: Code sign and build prod app
+        env:
+          APPLE_API_KEY_ID: ${{secrets.APPLE_API_KEY_ID}}
+          APPLE_ISSUER_ID: ${{secrets.APPLE_ISSUER_ID}}
+          APPLE_API_KEY_CONTENT: ${{secrets.APPLE_API_KEY_CONTENT}}
+        run: |
+          cd ios && bundle install
+          bundle exec fastlane ios production
